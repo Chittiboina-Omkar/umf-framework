@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Framework Architecture — Flowchart</title>
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#f3f5fa; --panel:#ffffff; --panel2:#f7f9fd; --ink:#101522; --muted:#596277;
+  --line:#d3d9e6; --arrow:#8a93a8;
+  --start:#6d5dfc; --proc:#2563eb; --decide:#f59e0b; --recon:#0ea5a5;
+  --fail:#dc2626; --ok:#16a34a; --store:#4338ca; --sec:#b45309;
+  --stage:#0891b2; --raw:#2563eb; --cur:#0e7490; --cons:#7c3aed; --vec:#db2777;
+  --shadow:rgba(30,40,70,.14);
+  box-sizing:border-box;
+  padding-top: env(safe-area-inset-top,0px);
+  padding-bottom: env(safe-area-inset-bottom,0px);
+}
+:root:not([data-theme="light"]){@media (prefers-color-scheme: dark){
+  --bg:#0a0e18; --panel:#121929; --panel2:#0e1420; --ink:#e7ebf5; --muted:#99a3ba;
+  --line:#242e46; --arrow:#4a556e; --shadow:rgba(0,0,0,.5);
+}}
+:root[data-theme="dark"]{
+  --bg:#0a0e18; --panel:#121929; --panel2:#0e1420; --ink:#e7ebf5; --muted:#99a3ba;
+  --line:#242e46; --arrow:#4a556e; --shadow:rgba(0,0,0,.5);
+}
+html{scroll-padding-top: env(safe-area-inset-top,0px);}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;line-height:1.4;}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--panel);z-index:50;}
+.wrap{max-width:880px;margin:0 auto;padding:22px 16px 70px;}
+h1{font-size:clamp(19px,3.3vw,27px);margin:0 0 2px;}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px;}
+
+.chart{display:flex;flex-direction:column;align-items:center;}
+.node{width:100%;max-width:560px;border-radius:12px;padding:12px 16px;color:#fff;
+  box-shadow:0 2px 6px var(--shadow);position:relative;}
+.node .k{font-size:10.5px;font-weight:800;letter-spacing:.7px;opacity:.9;display:block;margin-bottom:3px;}
+.node .t{font-size:15px;font-weight:800;line-height:1.15;}
+.node .d{font-size:11.6px;opacity:.97;margin-top:4px;line-height:1.35;}
+.node.small{max-width:460px;}
+.n-start{background:linear-gradient(150deg,#6d5dfc,#8b7bff);}
+.n-proc{background:linear-gradient(150deg,#2563eb,#3b82f6);}
+.n-store{background:linear-gradient(150deg,#4338ca,#5b4fe0);}
+.n-recon{background:linear-gradient(150deg,#0ea5a5,#13b9b9);}
+.n-stage{background:linear-gradient(150deg,#0891b2,#06b6d4);}
+.n-raw{background:linear-gradient(150deg,#2563eb,#3b82f6);}
+.n-cur{background:linear-gradient(150deg,#0e7490,#0891b2);}
+.n-cons{background:linear-gradient(150deg,#7c3aed,#9333ea);}
+.n-vec{background:linear-gradient(150deg,#db2777,#ec4899);}
+.n-fail{background:linear-gradient(150deg,#dc2626,#ef4444);}
+.n-sec{background:linear-gradient(150deg,#b45309,#d97706);}
+
+.diamond{width:300px;max-width:88vw;background:linear-gradient(150deg,#f59e0b,#fbbf24);color:#1a1205;
+  border-radius:14px;padding:14px 16px;text-align:center;box-shadow:0 2px 8px var(--shadow);}
+.diamond .t{font-size:14px;font-weight:800;}
+.diamond .d{font-size:11.5px;margin-top:3px;font-weight:600;}
+
+.down{width:2px;height:20px;background:var(--arrow);position:relative;}
+.down::after{content:"";position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+  border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--arrow);}
+.down.short{height:14px;}
+
+.branch{display:flex;gap:16px;width:100%;max-width:620px;justify-content:center;align-items:flex-start;}
+.branch .col{flex:1;display:flex;flex-direction:column;align-items:center;}
+.lbl{font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;margin-bottom:6px;}
+.lbl.pass{background:var(--ok);color:#fff;}
+.lbl.fail{background:var(--fail);color:#fff;}
+
+.loop{font-size:11px;color:var(--muted);background:var(--panel2);border:1px dashed var(--line);
+  border-radius:8px;padding:6px 12px;margin:8px 0;text-align:center;max-width:460px;}
+
+.sideband{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--line);
+  border-left:4px solid var(--store);border-radius:10px;padding:10px 14px;margin:6px 0;font-size:11.8px;color:var(--muted);}
+.sideband b{color:var(--ink);}
+.sideband.sec{border-left-color:var(--sec);}
+.sideband.recon{border-left-color:var(--recon);}
+
+h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted);
+  margin:30px 0 14px;border-bottom:1px solid var(--line);padding-bottom:6px;width:100%;}
+
+.matrix{width:100%;border-collapse:collapse;font-size:12px;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.matrix th,.matrix td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);}
+.matrix th{background:var(--panel2);font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
+.matrix td b{color:var(--proc);}
+.matrix tr:last-child td{border-bottom:none;}
+
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 0;font-size:11px;color:var(--muted);}
+.legend span{display:flex;align-items:center;gap:6px;}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;}
+footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Universal Migration Framework — Architecture Flowchart</h1>
+  <p class="sub">Top to bottom = how one run flows. Every stage is optional and auto-selected. Design blueprint, not code.</p>
+
+  <!-- ======================= MAIN FLOW ======================= -->
+  <div class="chart">
+
+    <div class="node n-start small">
+      <span class="k">START · UI (notebook)</span>
+      <span class="t">User gives Source + Target + Load type</span>
+      <span class="d">Dropdowns or manual entry (catalog / schema / table / path). Platform auto-detected.</span>
+    </div>
+    <div class="down short"></div>
+
+    <div class="node n-store small">
+      <span class="k">CONFIG</span>
+      <span class="t">Details saved as JSON config (at client)</span>
+      <span class="d">Two-way synced with UI · versioned &amp; audited in control tables.</span>
+    </div>
+    <div class="down short"></div>
+
+    <div class="diamond">
+      <div class="t">Validate config</div>
+      <div class="d">Connections · schema · type map · gold SQL · dependency cycles</div>
+    </div>
+    <div class="down short"></div>
+    <div class="branch">
+      <div class="col">
+        <span class="lbl fail">INVALID</span>
+        <div class="node n-fail small"><span class="t">Stop before run</span><span class="d">Show exact error in UI + log. Nothing touched.</span></div>
+      </div>
+      <div class="col">
+        <span class="lbl pass">VALID</span>
+        <div class="node n-proc small"><span class="t">Decision engine picks steps</span><span class="d">From Source + Target + Load (see matrix below).</span></div>
+      </div>
+    </div>
+    <div class="down"></div>
+
+    <!-- stage -->
+    <div class="node n-stage">
+      <span class="k">STEP · STAGE (L0→L1→L2→L3)</span>
+      <span class="t">Connect → read data + metadata → map types → land in STAGING</span>
+      <span class="d">Exact precision/scale/length. Large tables: chunk + checkpoint + file-sizing.</span>
+    </div>
+    <div class="down short"></div>
+
+    <div class="diamond">
+      <div class="t">Type &amp; schema OK?</div>
+      <div class="d">decimal≤38 · length fits · known type · drift policy</div>
+    </div>
+    <div class="down short"></div>
+    <div class="branch">
+      <div class="col">
+        <span class="lbl fail">UNMAPPABLE</span>
+        <div class="node n-fail small"><span class="t">That table FAILS (never partial)</span><span class="d">Show column, source type, limit, actual max, sample. You set data_type_handling → saved → not asked again. Other tables continue.</span></div>
+      </div>
+      <div class="col">
+        <span class="lbl pass">OK</span>
+        <div class="node n-recon small"><span class="t">RECON GATE</span><span class="d">count · sum · null · max-length · schema</span></div>
+      </div>
+    </div>
+    <div class="down short"></div>
+
+    <div class="diamond">
+      <div class="t">Recon passed?</div>
+      <div class="d">decimal/int/count tolerance = 0 · float small</div>
+    </div>
+    <div class="down short"></div>
+    <div class="branch">
+      <div class="col">
+        <span class="lbl fail">FAIL</span>
+        <div class="node n-fail small"><span class="t">Discard staging · hold watermark</span><span class="d">Target untouched · alert (Outlook) · highlight in UI. No bad / partial data ever reaches target.</span></div>
+      </div>
+      <div class="col">
+        <span class="lbl pass">PASS</span>
+        <div class="node n-raw small"><span class="t">Atomic commit → RAW</span><span class="d">Exact mirror + audit cols · append or last-N + archive</span></div>
+      </div>
+    </div>
+    <div class="down"></div>
+
+    <div class="node n-recon small"><span class="k">RECON</span><span class="t">Raw verified → proceed</span></div>
+    <div class="down short"></div>
+
+    <div class="node n-cur">
+      <span class="k">STEP · CURATED (L5)</span>
+      <span class="t">Apply mode + DQ + transforms</span>
+      <span class="d">snapshot / upsert / incremental / CDC / SCD2 · deletes · dedupe · rename / derived / mask. Bad rows → reject table.</span>
+    </div>
+    <div class="down short"></div>
+    <div class="node n-recon small"><span class="k">RECON GATE</span><span class="t">Curated verified (atomic commit)</span></div>
+    <div class="down"></div>
+
+    <div class="node n-cons">
+      <span class="k">STEP · CONSUMPTION (L6)</span>
+      <span class="t">Gold logic + client delivery</span>
+      <span class="d">Business logic (SQL / structured) from logic table, dependency-ordered. Deliver as table / files / view.</span>
+    </div>
+    <div class="down short"></div>
+    <div class="node n-recon small"><span class="k">RECON GATE</span><span class="t">Gold / delivery verified</span></div>
+    <div class="down"></div>
+
+    <div class="node n-vec">
+      <span class="k">STEP · VECTORS (L8) — optional</span>
+      <span class="t">Chunk → embed → vector store</span>
+      <span class="d">Metadata carried · delete-sync · re-embed on change.</span>
+    </div>
+    <div class="down short"></div>
+
+    <div class="node n-start small" style="background:linear-gradient(150deg,#16a34a,#22c55e);">
+      <span class="k">END</span>
+      <span class="t">Run SUCCESS / PARTIAL / FAILED</span>
+      <span class="d">Watermark advances only on success. Everything logged.</span>
+    </div>
+
+  </div>
+
+  <!-- side planes -->
+  <h2 class="sec">Always-on (wraps every step)</h2>
+  <div class="chart">
+    <div class="sideband recon"><b>L7 Reconciliation</b> — runs after every step; mandatory; cannot be switched off. Scale: partition counts + aggregates + sampling.</div>
+    <div class="sideband"><b>L9 Control &amp; Logging</b> — config · watermark · DAG · approvals · and append-only logs: run / step / table / file / schema / type-mapping / DQ / reject / recon / error. Crash-safe.</div>
+    <div class="sideband sec"><b>Security</b> — data never leaves client · no telemetry · secrets by reference · roles · config + state at client. Code shipped only as obfuscated wheel.</div>
+  </div>
+
+  <!-- ======================= FULL STEP MATRIX ======================= -->
+  <h2 class="sec">Decision matrix — every Source → Target combination</h2>
+  <table class="matrix">
+    <thead><tr><th>Source</th><th>Target (how far)</th><th>Steps auto-selected</th></tr></thead>
+    <tbody>
+      <tr><td>DWH</td><td>files to client</td><td><b>S1</b> (DWH→Files)</td></tr>
+      <tr><td>DWH</td><td>table to client</td><td><b>S1b</b> (DWH→Table)</td></tr>
+      <tr><td>DWH</td><td>files + table (both)</td><td><b>S1 + S1b</b></td></tr>
+      <tr><td>DWH</td><td>raw</td><td><b>S1b</b></td></tr>
+      <tr><td>DWH</td><td>curated</td><td><b>S1b → S3</b></td></tr>
+      <tr><td>DWH</td><td>consumption (gold/delivery)</td><td><b>S1b → S3 → S4</b></td></tr>
+      <tr><td>DWH</td><td>consumption + vectors</td><td><b>S1b → S3 → S4 → S6</b></td></tr>
+      <tr><td>Files / object storage</td><td>raw</td><td><b>S2</b></td></tr>
+      <tr><td>Files</td><td>curated</td><td><b>S2 → S3</b></td></tr>
+      <tr><td>Files</td><td>consumption</td><td><b>S2 → S3 → S4</b></td></tr>
+      <tr><td>Files</td><td>vectors</td><td><b>S2 → S3 → S6</b> (or Volume→Vector direct)</td></tr>
+      <tr><td>Raw (existing)</td><td>curated</td><td><b>S3</b></td></tr>
+      <tr><td>Curated (existing)</td><td>gold / delivery</td><td><b>S4</b></td></tr>
+      <tr><td>Volume (files)</td><td>table (inventory / content)</td><td><b>S5</b> (Volume→Table)</td></tr>
+      <tr><td>Table</td><td>volume (export)</td><td><b>S5</b> (Table→Volume)</td></tr>
+      <tr><td>Volume</td><td>volume (copy / cross-cloud)</td><td><b>S5</b> (Volume→Volume)</td></tr>
+      <tr><td>Table / volume</td><td>vectors</td><td><b>S6</b></td></tr>
+      <tr><td>Vector</td><td>table (results / metadata)</td><td><b>S6→S5</b> (Vector→Table)</td></tr>
+      <tr><td>Any</td><td>— (one step only)</td><td>manual override: run a single step</td></tr>
+    </tbody>
+  </table>
+  <div class="loop" style="max-width:100%;margin-top:10px;">
+    Steps always carry an implicit <b>STAGE + RECON gate</b> before writing any target, plus <b>Logging</b>. A single step, a full flow, or a whole dependency graph can be run — one table's failure stops only its own downstream, the rest continue.
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--start)"></i> Start / End</span>
+    <span><i style="background:var(--proc)"></i> Process step</span>
+    <span><i style="background:var(--decide)"></i> Decision</span>
+    <span><i style="background:var(--recon)"></i> Recon gate</span>
+    <span><i style="background:var(--fail)"></i> Fail / stop</span>
+    <span><i style="background:var(--store)"></i> Config / control</span>
+  </div>
+
+  <footer>
+    Design blueprint only — no code yet. Code begins after your written <b>“confirm”</b>, part by part, each tested before the next. Open choice: first working platform (Databricks or Fabric).
+  </footer>
+</div>
+</body>
+</html>

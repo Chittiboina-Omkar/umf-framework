@@ -1,0 +1,44 @@
+name: CI
+
+# Run the pure-Python test suite on every push and pull request. These tests
+# need no Spark and no external services, so they run quickly on a plain runner
+# and guard the correctness-critical logic (validation, type mapping,
+# reconciliation, staging isolation, orchestration, DQ, gold, delivery, UI).
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the package (dev extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Compile all modules (syntax check)
+        run: |
+          python -m compileall umf
+
+      - name: Run the test suite
+        run: |
+          pytest -q
+
+      - name: Run the portable test runner (no pytest)
+        run: |
+          python tests/run_tests.py

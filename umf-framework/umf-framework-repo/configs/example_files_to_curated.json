@@ -1,0 +1,40 @@
+{
+  "environment": "DEV",
+  "client_id": "acme",
+  "platform": "AUTO",
+  "pipeline": { "source_kind": "FILES", "target_layer": "CURATED" },
+  "source": {
+    "category": "files",
+    "path": "/mnt/landing/orders/",
+    "format": "PARQUET",
+    "options": {},
+    "strict": true
+  },
+  "load": { "type": "APPEND_ONLY", "volume_class": "medium" },
+  "raw": { "write_mode": "append" },
+  "schema": { "mode": "EVOLVE" },
+  "curated": {
+    "mode": "UPSERT_LATEST",
+    "key_strategy": "COMPOSITE",
+    "key_columns": ["order_id"],
+    "ordering_column": "updated_at",
+    "transforms": [
+      { "type": "RENAME", "from": "amt", "to": "amount" },
+      { "type": "CAST", "column": "amount", "to": "decimal(12,2)" }
+    ],
+    "dq_rules": [
+      { "name": "order_id_not_null", "type": "NOT_NULL", "columns": ["order_id"], "action": "FAIL" },
+      { "name": "amount_range", "type": "RANGE", "columns": ["amount"], "action": "QUARANTINE", "params": { "min": 0 } }
+    ]
+  },
+  "target": {
+    "table_format": "DELTA",
+    "catalog": "main",
+    "schema": "sales_curated",
+    "table": "orders",
+    "partition_by": []
+  },
+  "curated_target": { "catalog": "main", "schema": "sales_curated", "table": "orders" },
+  "recon": { "level": "L2", "decimal_tolerance": 0 },
+  "operation": { "run_mode": "normal" }
+}

@@ -1,0 +1,40 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Local run output (logs, state) — never commit client data or logs
+/local_logs/
+/local_state/
+*.jsonl
+
+# Secrets — never commit; the framework only ever stores references, but guard anyway
+.env
+*.pem
+*.key
+secrets.json

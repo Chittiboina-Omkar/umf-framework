@@ -1,0 +1,39 @@
+{
+  "environment": "PROD",
+  "client_id": "acme",
+  "platform": "DATABRICKS",
+  "pipeline": { "source_kind": "DWH", "target_layer": "RAW" },
+  "source": {
+    "category": "oracle",
+    "category_family": "oracle",
+    "url": "jdbc:oracle:thin:@//db-host:1521/ORCL",
+    "driver": "oracle.jdbc.OracleDriver",
+    "table": "SALES.ORDERS",
+    "user": "umf_reader",
+    "password_ref": "databricks://sales-scope/oracle-password",
+    "fetch_size": 20000
+  },
+  "load": {
+    "type": "INCREMENTAL",
+    "watermark_column": "UPDATED_AT",
+    "volume_class": "large",
+    "chunk_column": "ORDER_ID",
+    "chunk_bounds": [1, 50000000],
+    "num_chunks": 16
+  },
+  "raw": { "write_mode": "last_n", "retention_runs": 10, "archive": { "enabled": true } },
+  "schema": { "mode": "EVOLVE" },
+  "data_type_handling": {
+    "default": "FAIL",
+    "columns": { "sales.orders.legacy_total": "DECIMAL_38" }
+  },
+  "target": {
+    "table_format": "DELTA",
+    "catalog": "main",
+    "schema": "sales_raw",
+    "table": "orders",
+    "partition_by": []
+  },
+  "recon": { "level": "L2", "decimal_tolerance": 0 },
+  "operation": { "run_mode": "normal" }
+}

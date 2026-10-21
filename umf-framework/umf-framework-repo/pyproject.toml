@@ -1,0 +1,50 @@
+# Packaging for the Universal Migration & Data Framework (UMF).
+#
+# The framework is distributed as a wheel. The core depends only on the Python
+# standard library, so it installs and runs anywhere; Spark and cloud SDKs are
+# optional extras the host platform usually already provides.
+#
+# Build a wheel:        python -m build
+# Build obfuscated:     see docs/DEPLOYMENT.md (PyArmor / Nuitka wrapper)
+#
+# Rename the package:   change [project].name and the package directory name;
+#                       nothing else depends on the distribution name.
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "umf-framework"
+version = "0.1.0"
+description = "Universal, parameter-driven data migration framework (multi-cloud and on-prem)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Proprietary" }
+authors = [{ name = "Your Team" }]
+keywords = ["data", "migration", "etl", "delta", "iceberg", "spark"]
+
+# The core has NO required third-party dependencies, by design: it must import
+# and run (config validation, type planning, reconciliation logic) on any Python
+# without installing anything. Spark and the UI are optional extras.
+dependencies = []
+
+[project.optional-dependencies]
+# Installed where the framework actually processes data. On a managed platform
+# (Databricks, Fabric, Glue, EMR, Dataproc) these are already present, so the
+# plain install is usually enough there.
+spark = ["pyspark>=3.4"]
+# The rich notebook UI.
+ui = ["ipywidgets>=8.0"]
+# Development and testing.
+dev = ["pytest>=7.0", "build>=1.0"]
+
+[tool.setuptools.packages.find]
+# Ship only the framework package; tests, docs and example configs are not part
+# of the wheel.
+include = ["umf*"]
+exclude = ["tests*", "docs*", "configs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

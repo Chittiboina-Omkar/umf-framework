@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Universal Migration Framework — Architecture</title>
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#eef1f7; --panel:#ffffff; --panel2:#f6f8fc; --ink:#121826; --muted:#5a6578;
+  --line:#d6dce8; --edge:#c3cbdb;
+  --src:#6d5dfc; --src2:#8b7bff;
+  --stage:#0ea5a5; --raw:#2563eb; --cur:#0891b2; --cons:#7c3aed; --vec:#db2777;
+  --gate:#f59e0b; --ok:#16a34a; --warn:#dc2626;
+  --adapter:#0f766e; --ctrl:#4338ca; --sec:#b45309;
+  --accent:#6d5dfc;
+  --shadow: rgba(30,40,70,.18);
+  --box-sizing:border-box;
+  box-sizing:border-box;
+  padding-top: env(safe-area-inset-top,0px);
+  padding-bottom: env(safe-area-inset-bottom,0px);
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --bg:#0b0f1a; --panel:#131a2a; --panel2:#0f1522; --ink:#e8ecf6; --muted:#9aa6bd;
+    --line:#26304a; --edge:#1a2236; --shadow: rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f1a; --panel:#131a2a; --panel2:#0f1522; --ink:#e8ecf6; --muted:#9aa6bd;
+  --line:#26304a; --edge:#1a2236; --shadow: rgba(0,0,0,.5);
+}
+html{scroll-padding-top: env(safe-area-inset-top,0px);}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  line-height:1.45; -webkit-font-smoothing:antialiased;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--panel);z-index:50;}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 18px 70px;}
+header.top{display:flex;flex-wrap:wrap;align-items:center;gap:14px;justify-content:space-between;margin-bottom:6px;}
+h1{font-size:clamp(20px,3.4vw,30px);margin:0;letter-spacing:.2px;}
+.sub{color:var(--muted);font-size:13.5px;margin:2px 0 0;}
+.toggle{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600;}
+.toggle:hover{border-color:var(--accent);}
+.note{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:11px 14px;font-size:13px;color:var(--muted);margin:14px 0 22px;}
+.note b{color:var(--ink);}
+
+h2.sec{font-size:15px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:34px 0 14px;border-bottom:1px solid var(--line);padding-bottom:7px;}
+
+/* ---------- 3D scene for the pipeline ---------- */
+.scene{perspective:1600px;overflow-x:auto;padding:30px 4px 24px;}
+.flow{display:flex;align-items:stretch;gap:0;min-width:940px;transform:rotateX(16deg);transform-style:preserve-3d;transition:transform .4s ease;}
+body.flat .flow{transform:none;}
+body.flat .scene{perspective:none;}
+.stageblk{display:flex;flex-direction:column;align-items:center;}
+.slab{
+  position:relative;width:138px;min-height:132px;border-radius:12px;color:#fff;
+  padding:12px 11px;display:flex;flex-direction:column;gap:6px;
+  box-shadow:0 2px 0 var(--edge),0 4px 0 var(--edge),0 6px 0 var(--edge),0 8px 0 var(--edge),0 10px 0 var(--edge),0 16px 24px var(--shadow);
+  transform-style:preserve-3d;
+}
+body.flat .slab{box-shadow:0 2px 10px var(--shadow);}
+.slab .tag{font-size:10.5px;font-weight:700;opacity:.9;letter-spacing:.6px;}
+.slab .ttl{font-size:15px;font-weight:800;line-height:1.1;}
+.slab .desc{font-size:10.8px;opacity:.96;line-height:1.3;}
+.s-src{background:linear-gradient(160deg,var(--src),var(--src2));}
+.s-stage{background:linear-gradient(160deg,#0ea5a5,#14b8b8);}
+.s-raw{background:linear-gradient(160deg,#2563eb,#3b82f6);}
+.s-cur{background:linear-gradient(160deg,#0891b2,#06b6d4);}
+.s-cons{background:linear-gradient(160deg,#7c3aed,#9333ea);}
+.s-vec{background:linear-gradient(160deg,#db2777,#ec4899);}
+.arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;width:62px;padding-top:34px;}
+.arrow .gate{font-size:9px;font-weight:800;color:#111;background:var(--gate);border-radius:6px;padding:3px 6px;letter-spacing:.3px;white-space:nowrap;box-shadow:0 2px 6px var(--shadow);}
+.arrow .ar{font-size:22px;color:var(--muted);line-height:1;margin-top:4px;}
+.floor{height:10px;}
+
+.railbox{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px;}
+@media(min-width:720px){.railbox{grid-template-columns:1fr 1fr;}}
+.rail{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+.rail h4{margin:0 0 8px;font-size:12.5px;letter-spacing:.4px;display:flex;align-items:center;gap:8px;}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{font-size:11px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--ink);}
+
+/* ---------- 3D layer stack ---------- */
+.stack{perspective:1500px;display:flex;justify-content:center;padding:14px 0 6px;overflow-x:auto;}
+.stack-inner{transform:rotateX(52deg) rotateZ(-40deg);transform-style:preserve-3d;display:flex;flex-direction:column;gap:12px;transition:transform .4s ease;}
+body.flat .stack-inner{transform:none;gap:8px;}
+body.flat .stack{perspective:none;}
+.layer{
+  width:420px;max-width:78vw;border-radius:10px;padding:9px 14px;color:#fff;font-weight:700;
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  box-shadow:-10px 10px 18px var(--shadow);
+}
+body.flat .layer{box-shadow:0 2px 8px var(--shadow);width:100%;max-width:640px;}
+.layer small{font-weight:500;font-size:11px;opacity:.95;text-align:right;}
+.l0{background:#0f766e;}.l1{background:#047857;}.l2{background:#0d9488;}.l3{background:#0ea5a5;}
+.l4{background:#2563eb;}.l5{background:#0891b2;}.l6{background:#7c3aed;}.l7{background:#d97706;}
+.l8{background:#db2777;}.l9{background:#4338ca;}
+
+/* ---------- cards grid ---------- */
+.grid{display:grid;grid-template-columns:1fr;gap:14px;}
+@media(min-width:680px){.grid.c2{grid-template-columns:1fr 1fr;}}
+@media(min-width:900px){.grid.c3{grid-template-columns:1fr 1fr 1fr;}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:0 1px 3px var(--shadow);}
+.card h3{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px;}
+.card ul{margin:6px 0 0;padding-left:18px;}
+.card li{font-size:12.6px;margin:4px 0;color:var(--ink);}
+.card li b{color:var(--ink);}
+.pill{display:inline-block;font-size:10px;font-weight:700;border-radius:6px;padding:2px 7px;color:#fff;}
+.p-ok{background:var(--ok);}.p-warn{background:var(--warn);}.p-info{background:var(--accent);}
+
+.decision{display:flex;flex-direction:column;gap:10px;}
+.drow{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12.4px;}
+.drow .to{font-weight:800;color:var(--accent);}
+.drow b{color:var(--ink);}
+@media(max-width:560px){.drow{grid-template-columns:1fr;text-align:left;}.drow .to{text-align:left;}}
+
+.guarantee{display:grid;grid-template-columns:1fr;gap:10px;}
+@media(min-width:620px){.guarantee{grid-template-columns:1fr 1fr;}}
+.g{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:10px;padding:10px 13px;font-size:12.6px;}
+.g b{display:block;margin-bottom:2px;}
+
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin:10px 0 4px;font-size:11.5px;color:var(--muted);}
+.legend span{display:flex;align-items:center;gap:6px;}
+
+footer{margin-top:40px;border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:12px;}
+.scroll-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:-10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Universal Multi-Cloud Migration &amp; Data Framework</h1>
+      <p class="sub">One parameter-driven framework · any source → any target · multi-cloud + on-prem · design blueprint (not code)</p>
+    </div>
+    <button class="toggle" id="t">Switch to Flat view</button>
+  </header>
+
+  <div class="note">
+    <b>How to read this:</b> the coloured slabs are the <b>data flow</b> (each stage is optional — only the stages your config asks for run). The <b>orange gates</b> between them are mandatory <b>reconciliation</b>: bad data never passes a gate. Below the flow are the <b>engine layers (L0–L9)</b>, the <b>adapters</b> that make it multi-cloud, the <b>decision rules</b> that pick the steps automatically, and the <b>production guarantees</b>. Use the toggle (top right) to flatten the 3D view for maximum clarity.
+  </div>
+
+  <!-- ===================== DATA FLOW (3D) ===================== -->
+  <h2 class="sec">1 · The Data Flow — what moves, with a recon gate at every step</h2>
+  <div class="scene">
+    <div class="flow">
+
+      <div class="stageblk">
+        <div class="slab s-src">
+          <div class="tag">SOURCE</div>
+          <div class="ttl">Any Source</div>
+          <div class="desc">DWH · RDBMS · NoSQL · files · object storage · SFTP/HDFS · SaaS/API · stream. Metadata + data read exactly.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="gate">RECON R1</div><div class="ar">→</div></div>
+
+      <div class="stageblk">
+        <div class="slab s-stage">
+          <div class="tag">STAGE</div>
+          <div class="ttl">Stage &amp; Validate</div>
+          <div class="desc">Land in staging first. Schema + type + count checks here. Pass → continue. Fail → discard, target untouched.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="gate">RECON R2</div><div class="ar">→</div></div>
+
+      <div class="stageblk">
+        <div class="slab s-raw">
+          <div class="tag">RAW</div>
+          <div class="ttl">Raw (exact mirror)</div>
+          <div class="desc">Dynamic DDL from source. Original names/types/precision. +audit cols. Append or last-N runs + auto-archive.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="gate">RECON R3</div><div class="ar">→</div></div>
+
+      <div class="stageblk">
+        <div class="slab s-cur">
+          <div class="tag">CURATED</div>
+          <div class="ttl">Curated</div>
+          <div class="desc">Mode = snapshot / upsert / incremental / CDC / SCD2. DQ, rename, derived, delete-handling, dedupe.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="gate">RECON R4</div><div class="ar">→</div></div>
+
+      <div class="stageblk">
+        <div class="slab s-cons">
+          <div class="tag">CONSUMPTION</div>
+          <div class="ttl">Gold + Delivery</div>
+          <div class="desc">Business logic (SQL / structured) from a logic table. Deliver to client as table / files / view.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="gate">RECON R5</div><div class="ar">→</div></div>
+
+      <div class="stageblk">
+        <div class="slab s-vec">
+          <div class="tag">VECTOR</div>
+          <div class="ttl">Vectors</div>
+          <div class="desc">Chunk → embed → vector store. Metadata carried. Delete-sync + re-embed on change.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <p class="scroll-hint">↔ scroll if the flow is wider than your screen</p>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--gate)"></i> Recon gate — issue data cannot pass</span>
+    <span><i class="dot" style="background:var(--ok)"></i> Atomic commit — all-or-nothing, no partial data</span>
+    <span><i class="dot" style="background:var(--accent)"></i> Every stage optional &amp; auto-selected</span>
+  </div>
+
+  <div class="railbox">
+    <div class="rail">
+      <h4><i class="dot" style="background:var(--adapter)"></i> Volume ↔ Table ↔ Vector (all directions)</h4>
+      <div class="chips">
+        <span class="chip">Volume → Table</span><span class="chip">Table → Volume</span>
+        <span class="chip">Volume → Volume</span><span class="chip">Table → Table</span>
+        <span class="chip">Volume → Vector</span><span class="chip">Table → Vector</span>
+        <span class="chip">Vector → Table</span><span class="chip">Volume → Table → Vector</span>
+      </div>
+    </div>
+    <div class="rail">
+      <h4><i class="dot" style="background:var(--src)"></i> Load types (per table, by config)</h4>
+      <div class="chips">
+        <span class="chip">FULL</span><span class="chip">INCREMENTAL (watermark)</span>
+        <span class="chip">CDC</span><span class="chip">APPEND-ONLY</span>
+        <span class="chip">SNAPSHOT-DIFF</span><span class="chip">INITIAL + ONGOING</span><span class="chip">BACKFILL</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ENGINE LAYERS (3D stack) ===================== -->
+  <h2 class="sec">2 · The Engine — 9 layers (step picks the layers, you never do)</h2>
+  <div class="stack">
+    <div class="stack-inner">
+      <div class="layer l0">L0 · Connectivity <small>connect + auth: IAM · SP · MI · Kerberos · key · SSL</small></div>
+      <div class="layer l1">L1 · Source Reader <small>read data + metadata · one adapter per category</small></div>
+      <div class="layer l2">L2 · Type &amp; Schema <small>source→canonical→target · precision/scale/length · drift</small></div>
+      <div class="layer l3">L3 · Extract / Ingest <small>chunking · parallelism · checkpoint · 100 TB · manifest</small></div>
+      <div class="layer l4">L4 · Raw <small>exact mirror · audit cols · retention / archive</small></div>
+      <div class="layer l5">L5 · Curated <small>snapshot/upsert/CDC/SCD2 · DQ · transforms · deletes</small></div>
+      <div class="layer l6">L6 · Consumption <small>gold logic (SQL/structured) · delivery files/table/view</small></div>
+      <div class="layer l7">L7 · Reconciliation <small>schema + data · tolerance · sampling at scale</small></div>
+      <div class="layer l8">L8 · Vectors <small>chunk · embed · store · delete-sync</small></div>
+      <div class="layer l9">L9 · Control / Log / UI <small>config · state · logs · DAG · approvals · UI</small></div>
+    </div>
+  </div>
+
+  <!-- ===================== ADAPTERS / MULTI-CLOUD ===================== -->
+  <h2 class="sec">3 · Multi-cloud &amp; non-cloud — core stays fixed, adapters plug in</h2>
+  <div class="grid c3">
+    <div class="card">
+      <h3><span class="pill p-info">COMPUTE</span> Platforms</h3>
+      <ul>
+        <li>Databricks (AWS / Azure / GCP)</li>
+        <li>Microsoft Fabric · Synapse Spark</li>
+        <li>AWS Glue · EMR · GCP Dataproc</li>
+        <li>Cloudera · OSS Spark · <b>on-prem / air-gapped</b></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-info">STORAGE</span> Volumes</h3>
+      <ul>
+        <li>S3 · ADLS Gen2 · OneLake · GCS · Blob</li>
+        <li>HDFS · MinIO / Ceph · NFS / SMB</li>
+        <li>SFTP / FTP(S) · HTTPS · OCI / OSS / R2…</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-info">CATALOG</span> Tables</h3>
+      <ul>
+        <li>Unity · Hive · Glue · Fabric Lakehouse</li>
+        <li>Iceberg REST / Polaris / Nessie · BigLake</li>
+        <li>Path-based (no catalog)</li>
+        <li>Format: <b>Delta</b> / <b>Iceberg</b></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-info">SOURCES</span> Databases (world-wide, by category)</h3>
+      <ul>
+        <li><b>Cloud DWH:</b> Snowflake · BigQuery · Redshift · Synapse · Fabric WH · Databricks SQL</li>
+        <li><b>MPP:</b> Teradata · Netezza · Vertica · Greenplum · Exadata · SAP HANA</li>
+        <li><b>RDBMS:</b> Oracle · SQL Server · PostgreSQL · MySQL/MariaDB · Db2</li>
+        <li><b>OLAP / engines:</b> ClickHouse · StarRocks · Trino · Hive · Dremio</li>
+        <li><b>NoSQL:</b> Mongo · Cassandra · DynamoDB · Cosmos</li>
+        <li><b>Files / SaaS / Stream:</b> CSV·JSON·Parquet·ORC·Avro·Excel·XML · Salesforce/SAP/REST · Kafka/Kinesis</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-info">ADAPTERS</span> Plug-in points</h3>
+      <ul>
+        <li>Storage · Catalog · DWH connector</li>
+        <li>Type-map · Table format · Vector store</li>
+        <li>Secrets vault · Alerts · Auth</li>
+        <li><b>New system = new adapter, core untouched.</b> Unknown type → safe-fail + highlight.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-info">UI</span> Notebook, professional</h3>
+      <ul>
+        <li>Opens inside the platform (auto-detect)</li>
+        <li>Dropdowns <b>and</b> manual entry (catalog/schema/table)</li>
+        <li>Two-way sync with JSON config</li>
+        <li>Run now · Submit as job · Monitor · Logs · Recon · Approvals</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===================== DECISION ENGINE ===================== -->
+  <h2 class="sec">4 · How steps are chosen — you give Source + Target, the framework decides</h2>
+  <div class="decision">
+    <div class="drow"><div><b>DWH</b> → files for client</div><div class="to">⇒</div><div>S1 (DWH→Files)</div></div>
+    <div class="drow"><div><b>DWH</b> → raw table</div><div class="to">⇒</div><div>S1b (DWH→Raw)</div></div>
+    <div class="drow"><div><b>DWH</b> → curated</div><div class="to">⇒</div><div>S1b → S3</div></div>
+    <div class="drow"><div><b>DWH</b> → consumption</div><div class="to">⇒</div><div>S1b → S3 → S4</div></div>
+    <div class="drow"><div><b>Files</b> → curated</div><div class="to">⇒</div><div>S2 → S3</div></div>
+    <div class="drow"><div><b>Any</b> → vectors</div><div class="to">⇒</div><div>… → S6</div></div>
+  </div>
+  <div class="note" style="margin-top:14px;">
+    Reconciliation (R) and Logging (L) <b>always</b> run and cannot be switched off. A single step can be run alone, a full flow can be run, or a whole dependency graph (DAG) — one table's failure stops only its own downstream; the rest continue. <b>No question is ever asked at run time</b> — every decision is already in the config.
+  </div>
+
+  <!-- ===================== TYPE HANDLING ===================== -->
+  <h2 class="sec">5 · Data types &amp; schema — exact first, never silent</h2>
+  <div class="grid c2">
+    <div class="card">
+      <h3><span class="pill p-ok">EXACT-FIRST</span> Type mapping</h3>
+      <ul>
+        <li>Precision, scale, length, nullable read from source metadata and mapped <b>exactly</b>.</li>
+        <li>UI preview shows <b>every column</b>: source type → target type, p, s, length.</li>
+        <li>Deviation only when physically impossible (decimal&gt;38, nanosecond ts, no type info in CSV, unknown type).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-warn">ON ISSUE</span> Fail → show → you decide</h3>
+      <ul>
+        <li>Unmappable column → that <b>table fails</b> (never partial), others continue.</li>
+        <li>Shown clearly: column, source type, target limit, <b>actual max value</b>, affected rows, sample.</li>
+        <li>You decide in UI (<b>data_type_handling</b>): keep length X / cast to string / decimal(38,s).</li>
+        <li>Decision saved in config → never asked again.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-info">SCHEMA MODE</span> per table</h3>
+      <ul>
+        <li><b>FIXED</b> — contract; mismatch fails.</li>
+        <li><b>OVERWRITE</b> — target mirrors source; column-drop needs threshold + approval.</li>
+        <li><b>EVOLVE</b> — additive (default, safe).</li>
+        <li><b>STRICT</b> — name/type/order must match.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-ok">RECON</span> catches the loss</h3>
+      <ul>
+        <li>Schema recon (before load): precision ≥, scale ≥, length ≥.</li>
+        <li>Data recon (after stage): count · <b>numeric sum (exact for decimal/int)</b> · null count · max length · min/max · optional hash.</li>
+        <li>Tolerance: decimal/int/count = <b>0</b>; float = small, client-set.</li>
+        <li>Fail → watermark holds, next step stops, alert sent.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===================== GUARANTEES ===================== -->
+  <h2 class="sec">6 · Production guarantees</h2>
+  <div class="guarantee">
+    <div class="g"><b>No partial data</b> Atomic (all-or-nothing) commit via Delta/Iceberg ACID; crash leaves target unchanged.</div>
+    <div class="g"><b>No bad data in target</b> Stage → recon gate → commit only on pass.</div>
+    <div class="g"><b>No silent corruption</b> Any deviation fails + highlights + logs + alerts.</div>
+    <div class="g"><b>No question at run time</b> All decisions pre-set in config; run is unattended.</div>
+    <div class="g"><b>No unnecessary runs</b> Incremental by default · no-change skip · idempotent · already-success skip.</div>
+    <div class="g"><b>Scale-ready</b> Chunking · checkpoint-resume · file-sizing · partition pruning · sampling recon (100 TB).</div>
+    <div class="g"><b>Restart &amp; rollback</b> Resume from failed step; Delta restore / Iceberg snapshot rollback.</div>
+    <div class="g"><b>Full audit</b> Every file, table, error, rejected row logged; crash-safe, append-only.</div>
+  </div>
+
+  <!-- ===================== SECURITY / DEPLOYMENT ===================== -->
+  <h2 class="sec">7 · Security &amp; deployment — data safe, code safe</h2>
+  <div class="grid c3">
+    <div class="card">
+      <h3><span class="pill p-ok">DATA</span> stays at client</h3>
+      <ul>
+        <li>Data never leaves the client platform. <b>No telemetry.</b></li>
+        <li>Logs hold counts/metadata, not values; errors masked.</li>
+        <li>Reject rows stay in client storage, restricted.</li>
+        <li><b>Config also lives at the client</b> (version + audit + rollback in control tables).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-warn">CODE</span> stays with you</h3>
+      <ul>
+        <li>Source only in your private repo.</li>
+        <li>Client gets a <b>compiled / obfuscated wheel</b> from a private feed — not downloadable source.</li>
+        <li>License / expiry check (offline key for air-gapped).</li>
+        <li>Honest: ~90% protection — code runs at client, so not absolute.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-info">SECRETS &amp; ROLES</span></h3>
+      <ul>
+        <li>Identity-first (IAM/SP/MI/Kerberos).</li>
+        <li>When unavoidable: secret in client vault, <b>referenced by name only</b> — never typed, never in JSON.</li>
+        <li>Roles: Admin · Developer · Operator · Viewer · Approver.</li>
+        <li>Prod writes as service principal; prod changes need approval.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:16px;">
+    <b>Deployment path:</b> your private repo → build → versioned wheel in private feed → installed in the client notebook. UI (in the notebook) writes the JSON config to the client control store → "Run" / schedule triggers a platform job → run status, recon and errors flow to client-side log tables → UI reads and shows them. Nothing leaves the client; your source is never shipped.
+  </div>
+
+  <footer>
+    This is a design blueprint, not code. Every component shown is a decision we agreed on. Code will begin only after your written <b>“confirm”</b>, built part by part in this same chat, each part tested before the next. The one open choice: which platform the first working part targets (Databricks or Fabric).
+  </footer>
+
+</div>
+
+<script>
+  // 3D / Flat toggle (runs after render; pure convenience)
+  (function(){
+    var btn=document.getElementById('t');
+    if(!btn) return;
+    btn.addEventListener('click',function(){
+      var flat=document.body.classList.toggle('flat');
+      btn.textContent=flat?'Switch to 3D view':'Switch to Flat view';
+    });
+  })();
+</script>
+</body>
+</html>
